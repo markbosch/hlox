@@ -4,6 +4,7 @@ import System.IO
 import System.Exit
 
 import Scanner
+import Expr
 
 main :: IO ()
 main = repl

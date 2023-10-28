@@ -9,4 +9,4 @@ data Token = Token
     lexeme :: String,
     literal :: Maybe Literal,
     line :: Int
-  } deriving (Show, Eq, Ord)
+  } deriving (Show, Eq)
