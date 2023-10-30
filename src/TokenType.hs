@@ -1,11 +1,6 @@
 module TokenType
   (TokenType(..),
-   Literal(..)) where
-
--- 
-data Literal
-  = String String | Number Double
-      deriving (Show, Eq, Ord)
+   ) where
 
 data TokenType
   =
@@ -28,4 +23,4 @@ data TokenType
 
   -- End of file
   EOF
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq)

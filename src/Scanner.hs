@@ -19,6 +19,7 @@ import Data.Char (isDigit, isAlpha, isAlphaNum, isSpace)
 
 import Token
 import TokenType
+import Object
 
 singleCharMapping :: [(TokenType, Char)]
 singleCharMapping
@@ -59,7 +60,6 @@ keywordsMapping
     ("and", AND),
     ("class", CLASS),
     ("else", ELSE),
-    ("false", FALSE),
     ("for", FOR),
     ("fun", FUN),
     ("if", IF),
@@ -69,7 +69,6 @@ keywordsMapping
     ("return", RETURN),
     ("super", SUPER),
     ("this", THIS),
-    ("true", TRUE),
     ("var", VAR),
     ("while", WHILE)
   ]
@@ -174,13 +173,21 @@ stringLiteral = do
   _ <- char '"' -- Match the opening double quote
   str <- many (match (/= '"')) -- Match characters until a closing double quote
   _ <- char '"' <* skipSpace -- Match the closing double quote
-  return (Token STRING str (Just (TokenType.String str)) 1)
+  return (Token STRING str (Just (String str)) 1)
   
 numberLiteral :: Scanner Token
 numberLiteral = do
   numStr <- some (match isDigit) <* skipSpace -- Match one or more digits
   let numValue = read numStr :: Double -- Parse the matched digits as a Double
-  return (Token NUMBER numStr (Just (TokenType.Number numValue)) 1)
+  return (Token NUMBER numStr (Just (Number numValue)) 1)
+
+boolLiteral :: Scanner Token
+boolLiteral = do
+  boolStr <- choice [string "true", string "false"] <* skipSpace
+  let token = case boolStr of
+                  "true"  -> Token TRUE boolStr (Just (Bool True)) 1
+                  "false" -> Token FALSE boolStr (Just (Bool False)) 1
+  return token
 
 -- identifier
 identifier :: Scanner Token
@@ -202,7 +209,8 @@ scanners =
   [
     doubleCharToken,
     stringLiteral,
-    numberLiteral,    -- the order of scanners does matter
+    numberLiteral,
+    boolLiteral,      -- the order of scanners does matter
     identifier,       -- make sure that identifier is before singlechar     
     singleCharToken   -- so that Maximal munch principle is applied
   ]

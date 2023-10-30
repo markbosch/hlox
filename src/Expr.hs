@@ -4,6 +4,7 @@ module Expr
   ) where
 
 import Token
+import Object
 
 data Expr
   = Assign Token Expr
@@ -16,12 +17,3 @@ data Expr
   | Unary Token Expr
   | Variable Token
   deriving (Show, Eq)
-
-data Object
-  = Number Double
-  | String String
-  | Bool Bool
-  | Undefined
-  deriving (Show, Eq)
-
-
