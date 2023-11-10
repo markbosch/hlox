@@ -1,5 +1,18 @@
 -- Parser
 -- https://craftinginterpreters.com/parsing-expressions.html
+-- https://tgdwyer.github.io/parsercombinators/
+-- https://github.com/gdevanla/haskell-lox/blob/main/src/ExprParser.hs
+-- https://jakewheat.github.io/intro_to_parsing/
+
+-- CFG - Context Free Grammer
+-- expression  -> equality
+-- equality    -> comparison ( ( "!=" | "==" ) comparison )*
+-- comparison  -> term ( ( ">" | ">=" | "<" | "<=" ) term )*
+-- term        -> factor ( ( "-" | "+" ) factor )*
+-- factor      -> unary ( ( "/" | "*" ) unary )*
+-- unary       -> ( "!" | "-" ) unary | primary
+-- primary     -> NUMBER | STRING | "true" | "false" | "nil"
+--              | "(" expression ")"
 
 module Parser
   (
@@ -8,7 +21,11 @@ module Parser
     primary,
     equality,
     unary,
-    multiplication
+    factor,
+    term,
+    expression,
+    combine,
+    comparison
   ) where
 
 import Control.Applicative
@@ -25,8 +42,7 @@ instance Functor Parser where
   -- fmap :: (a -> b) -> Parser a -> Parser b
   fmap f p = P (\tokens -> case parse p tokens of
                              []        -> []
-                             [(v,out)] -> [(f v, out)])
-
+                             (v,out):_ -> [(f v, out)])
 -- Applicative for Parser
 instance Applicative Parser where
   -- pure :: a -> Parser a
@@ -43,7 +59,7 @@ instance Monad Parser where
                             []        -> []
                             [(v,out)] -> parse (f v) out)
 
--- Alternative for Parser
+-- Alternative for Parser 
 instance Alternative Parser where
   -- empty :: Parser a
   empty = P (\tokens -> [])
@@ -62,77 +78,59 @@ tokenParser = P $ \tokens -> case tokens of
 
 -- match based on a list of tokentypes and return the first match
 match :: [TokenType] -> Parser Token
-match [] = empty -- No TokenTypes to match
-match (t:ts) = do
+match tokenTypes = do
     token <- tokenParser
-    if token_type token == t
+    if token_type token `elem` tokenTypes
         then return token
-        else match ts
+        else empty
+
+
+expression :: Parser Expr
+expression = equality
 
 equality :: Parser Expr
 equality = do
-    left <- comparison
-    token <- match [TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL]
-    right <- comparison
-    return $ Binary left token right
+    left <- combine
+    token <- match [BANG_EQUAL, EQUAL_EQUAL]
+    Binary left token <$> combine
 
 comparison :: Parser Expr
 comparison = do
-    left <- addition
-    token <- match [TokenType.GREATER, TokenType.GREATER_EQUAL, TokenType.LESS, TokenType.LESS_EQUAL]
-    right <- addition
-    return $ Binary left token right
+    left <- combine
+    token <- match [GREATER, GREATER_EQUAL, LESS, LESS_EQUAL]
+    Binary left token <$> combine
 
-addition :: Parser Expr
-addition = do
-    left <- multiplication
-    token <- match [TokenType.MINUS, TokenType.PLUS]
-    right <- multiplication
-    return $ Binary left token right
+combine :: Parser Expr
+combine = unary <|> comparison <|> factor <|> term
 
-multiplication :: Parser Expr
-multiplication = do
+term :: Parser Expr
+term = do
+    left <- combine
+    token <- match [MINUS, PLUS]
+    Binary left token <$> combine
+
+-- factor      -> unary ( ( "/" | "*" ) unary )*
+factor :: Parser Expr
+factor = do
     left <- unary
-    token <- match [TokenType.SLASH, TokenType.STAR]
+    token <- match [SLASH, STAR]
     right <- unary
     return $ Binary left token right
 
-unary :: Parser Expr  
-unary = do
-    token <- match [TokenType.BANG, TokenType.MINUS]
-    right <- primary
-    return $ Unary token right
+unary :: Parser Expr
+unary = primary <|> Unary <$> match [BANG, MINUS] <*> unary
 
 primary :: Parser Expr
 primary = do
     token <- tokenParser
     case token_type token of
-        TokenType.FALSE -> return $ Literal (Bool False)
-        TokenType.TRUE -> return $ Literal (Bool True)
-        TokenType.NIL -> return $ Literal Nil
-        TokenType.NUMBER -> return $ Literal (Expr.Number (read (lexeme token)))
-        TokenType.STRING -> return $ Literal (Expr.String (lexeme token))
-        TokenType.LEFT_PAREN -> do
+        FALSE -> return $ Literal (Bool False)
+        TRUE -> return $ Literal (Bool True)
+        NIL -> return $ Literal Nil
+        NUMBER -> return $ Literal (Expr.Number (read (lexeme token)))
+        STRING -> return $ Literal (Expr.String (lexeme token))
+        LEFT_PAREN -> do
             expr <- expression
-            match [TokenType.RIGHT_PAREN]
+            match [RIGHT_PAREN]
             return expr
         _ -> empty  -- Return empty if none of the expected primary expressions match
-
-expression :: Parser Expr
-expression = equality    
-
--- match (?!?!) with predicate
--- if tokentype == 
-
--- parse tokenParser [(Token.Token TokenType.MINUS "-" Nothing 1)]
-
-
-
---parsers :: [Parser Expr]
---parsers =
---  [
---    equality
---  ]
-
---parseTokens :: [Token] -> Expr
---parse primary [(Token.Token TokenType.TRUE "" (Just $ Bool True) 1)] 

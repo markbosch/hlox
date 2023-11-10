@@ -3,8 +3,10 @@ module Main where
 import System.IO
 import System.Exit
 
+import Token
 import Scanner
-import Parser
+import RecursiveParser
+import AstPrinter
 
 main :: IO ()
 main = repl
@@ -18,11 +20,17 @@ repl = do
     then do
       let tokens = scanTokens input
       print tokens
-      let expr = parse primary tokens
-      print expr
+      let result = parseAndPrintExpression tokens
+      print result
       repl
   else
     exit
+
+parseAndPrintExpression :: [Token] -> String
+parseAndPrintExpression tokens =
+  case parseExpression tokens of
+    Right expr -> astPrinter expr
+    Left err -> "Error: " ++ show err
 
 exit :: IO ()
 exit = exitWith ExitSuccess
