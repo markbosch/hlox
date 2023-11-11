@@ -1,8 +1,5 @@
 -- Parser
 -- https://craftinginterpreters.com/parsing-expressions.html
--- https://tgdwyer.github.io/parsercombinators/
--- https://github.com/gdevanla/haskell-lox/blob/main/src/ExprParser.hs
--- https://jakewheat.github.io/intro_to_parsing/
 
 -- CFG - Context Free Grammer
 -- expression  -> equality

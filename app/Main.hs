@@ -28,7 +28,7 @@ repl = do
 
 parseAndPrintExpression :: [Token] -> String
 parseAndPrintExpression tokens =
-  case parseExpression tokens of
+  case expression tokens of
     Right expr -> astPrinter expr
     Left err -> "Error: " ++ show err
 

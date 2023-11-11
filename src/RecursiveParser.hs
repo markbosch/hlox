@@ -1,6 +1,16 @@
 module RecursiveParser
-  ( parseExpression
+  ( expression
   ) where
+
+-- expression     → equality ;
+-- equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+-- comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+-- term           → factor ( ( "-" | "+" ) factor )* ;
+-- factor         → unary ( ( "/" | "*" ) unary )* ;
+-- unary          → ( "!" | "-" ) unary
+--                | primary ;
+-- primary        → NUMBER | STRING | "true" | "false" | "nil"
+--                | "(" expression ")" ;
 
 import Expr
 import Token
@@ -8,62 +18,76 @@ import TokenType
 
 newtype ParseError = ParseError String deriving (Show)
 
+makeBinary :: Expr -> Token -> [Token] -> ([Token] -> (Expr, [Token])) -> (Expr, [Token])
+makeBinary expr token tokens f = (\(expr',tokens') -> (Binary expr token expr', tokens')) $ f tokens
+
 -- The parser
-parseExpression :: [Token] -> Either ParseError Expr
-parseExpression tokens = do
-  case parseEquality tokens of
+expression :: [Token] -> Either ParseError Expr
+expression tokens = do
+  case equality tokens of
     (expr, []) -> Right expr
     (_, remaining) -> Left $ ParseError $ "Parsing error. Remaining tokens: " ++ show remaining
 
--- Equality parser
-parseEquality :: [Token] -> (Expr, [Token])
-parseEquality tokens =
-  let (comparisonExpr, restTokens1) = parseComparison tokens
-   in case restTokens1 of
-        (Token BANG_EQUAL _ _ _ : rest) -> let (nextComparison, restTokens2) = parseComparison rest in (Binary comparisonExpr (head restTokens1) nextComparison, restTokens2)
-        (Token EQUAL_EQUAL _ _ _ : rest) -> let (nextComparison, restTokens2) = parseComparison rest in (Binary comparisonExpr (head restTokens1) nextComparison, restTokens2)
-        _ -> (comparisonExpr, restTokens1)
+-- Equality
+equality :: [Token] -> (Expr, [Token])
+equality tokens = case comparison tokens of
+  (expr, Token BANG_EQUAL _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ comparison
+  (expr, Token EQUAL_EQUAL _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ comparison
+  (expr, tokens') -> (expr, tokens')
 
--- Comparison parser (similar structure for other non-terminals)
-parseComparison :: [Token] -> (Expr, [Token])
-parseComparison tokens =
-  let (termExpr, restTokens1) = parseTerm tokens
-   in case restTokens1 of
-        (Token GREATER _ _ _ : rest) -> let (nextTerm, restTokens2) = parseTerm rest in (Binary termExpr (head restTokens1) nextTerm, restTokens2)
-        (Token GREATER_EQUAL _ _ _ : rest) -> let (nextTerm, restTokens2) = parseTerm rest in (Binary termExpr (head restTokens1) nextTerm, restTokens2)
-        (Token LESS _ _ _ : rest) -> let (nextTerm, restTokens2) = parseTerm rest in (Binary termExpr (head restTokens1) nextTerm, restTokens2)
-        (Token LESS_EQUAL _ _ _ : rest) -> let (nextTerm, restTokens2) = parseTerm rest in (Binary termExpr (head restTokens1) nextTerm, restTokens2)
-        _ -> (termExpr, restTokens1)
 
--- Term parser
-parseTerm :: [Token] -> (Expr, [Token])
-parseTerm tokens =
-  let (factorExpr, restTokens1) = parseFactor tokens
-   in case restTokens1 of
-        (Token PLUS _ _ _ : rest) -> let (nextFactor, restTokens2) = parseFactor rest in (Binary factorExpr (head restTokens1) nextFactor, restTokens2)
-        (Token MINUS _ _ _ : rest) -> let (nextFactor, restTokens2) = parseFactor rest in (Binary factorExpr (head restTokens1) nextFactor, restTokens2)
-        _ -> (factorExpr, restTokens1)
+-- comparison
+comparison :: [Token] -> (Expr, [Token])
+comparison tokens = case term tokens of
+  (expr, Token GREATER _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ term
+  (expr, Token GREATER_EQUAL _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ term
+  (expr, Token LESS _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ term
+  (expr, Token LESS_EQUAL _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ term
+  (expr, tokens') -> (expr, tokens')
 
--- Factor parser (similar structure for other non-terminals)
-parseFactor :: [Token] -> (Expr, [Token])
-parseFactor tokens =
-  let (unaryExpr, restTokens1) = parseUnary tokens
-   in case restTokens1 of
-        (Token STAR _ _ _ : rest) -> let (nextUnary, restTokens2) = parseUnary rest in (Binary unaryExpr (head restTokens1) nextUnary, restTokens2)
-        (Token SLASH _ _ _ : rest) -> let (nextUnary, restTokens2) = parseUnary rest in (Binary unaryExpr (head restTokens1) nextUnary, restTokens2)
-        _ -> (unaryExpr, restTokens1)
+-- term
+term :: [Token] -> (Expr, [Token])
+term tokens = case factor tokens of
+  (expr, Token PLUS _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ factor
+  (expr, Token MINUS _ _ _: tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ factor
+  (expr, tokens') -> (expr, tokens')
 
--- Unary parser
-parseUnary :: [Token] -> (Expr, [Token])
-parseUnary tokens =
+-- factor
+factor :: [Token] -> (Expr, [Token])
+factor tokens = case unary tokens of
+  (expr, Token STAR _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ unary
+  (expr, Token SLASH _ _ _ : tokens') ->
+    makeBinary expr (tokens !! 1) tokens' $ unary
+  (expr, tokens') -> (expr, tokens')
+
+-- unary
+unary :: [Token] -> (Expr, [Token])
+unary tokens =
   case tokens of
-    (Token BANG _ _ _ : rest) -> let (unaryExpr, restTokens) = parseUnary rest in (Unary (head tokens) unaryExpr, restTokens)
-    (Token MINUS _ _ _ : rest) -> let (unaryExpr, restTokens) = parseUnary rest in (Unary (head tokens) unaryExpr, restTokens)
-    _ -> parsePrimary tokens
+    (Token BANG _ _ _ : tokens') ->
+      makeUnary (head tokens) tokens'
+    (Token MINUS _ _ _: tokens') ->
+      makeUnary (head tokens) tokens'
+    _ -> primary tokens
+  where
+    makeUnary :: Token -> [Token] -> (Expr, [Token])
+    makeUnary token tokens =
+      (Unary token expr, tokens')
+      where
+        (expr, tokens') = unary tokens
 
--- Primary parser
-parsePrimary :: [Token] -> (Expr, [Token])
-parsePrimary tokens =
+-- primary
+primary :: [Token] -> (Expr, [Token])
+primary tokens =
   case tokens of
     (Token NUMBER lex _ _ : rest) -> (Literal (Number (read lex)), rest)
     (Token STRING lex _ _ : rest) -> (Literal (String lex), rest)
