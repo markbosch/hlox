@@ -4,6 +4,7 @@ module AstPrinter(
 
 import Expr
 import Token
+import Object
 
 -- Pretty Printer
 astPrinter :: Expr -> String
@@ -28,3 +29,6 @@ parenthesize name exprs =
 -- Unary (Token.Token TokenType.MINUS "-" Nothing 1) $ Literal (String "123")
 -- Binary (Unary (Token.Token TokenType.MINUS "-" Nothing 1) $ Literal $ Number 123) (Token.Token TokenType.STAR "*" Nothing 1) $ Grouping $ Literal $ Number 45.67
 -- (* (- 123.0) (group 45.67)) 
+
+-- astPrinter $ Unary (Token.Token TokenType.MINUS "-" Nothing 1) $ Literal (Number 123)
+-- astPrinter $ Unary $ Literal $ Bool True

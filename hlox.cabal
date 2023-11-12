@@ -26,12 +26,14 @@ executable hlox
 
     -- Modules included in this executable, other than Main.
     other-modules:
+      AstPrinter
+      Expr
+      Object
       Scanner
       Parser
       Token
       TokenType
-      Expr
-      AstPrinter
+      RecursiveParser
       
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
