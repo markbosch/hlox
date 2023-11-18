@@ -34,6 +34,7 @@ executable hlox
       Token
       TokenType
       RecursiveParser
+      Interpreter
       
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

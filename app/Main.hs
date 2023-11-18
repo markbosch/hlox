@@ -7,6 +7,7 @@ import Token
 import Scanner
 import RecursiveParser
 import AstPrinter
+import Interpreter
 
 main :: IO ()
 main = repl
@@ -22,9 +23,19 @@ repl = do
       print tokens
       let result = parseAndPrintExpression tokens
       print result
+      let foo = interpreter tokens
+      print foo
       repl
   else
     exit
+
+interpreter :: [Token] -> String
+interpreter tokens = case expression $ tokens of
+   Right expr -> case evaluate expr of
+       Right result -> "Result: " ++ show result
+       Left error -> "Error: " ++ error
+   Left parseError -> "Parse error: " ++ show parseError
+
 
 parseAndPrintExpression :: [Token] -> String
 parseAndPrintExpression tokens =
